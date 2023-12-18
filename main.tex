@@ -58,31 +58,6 @@
     Nesse caso, uma otimização que \emph{reaching definitions} faz é a eliminação da declaração de $x$ para não gastar memória
     de forma desnecessária no programa.
 
-    A análise de \textit{Reaching Definitions} é crucial para várias otimizações de compilador e para a
-    análise estática de código. Ela permite ao compilador:
-
-    \begin{itemize}
-        \item Identificar e eliminar código morto.
-        \item Realizar a propagação de constantes.
-        \item Otimizar o gerenciamento de variáveis em memória.
-        \item Melhorar a eficiência na execução de programas.
-    \end{itemize}
-
-    Considere o seguinte trecho de código:
-
-    \begin{verbatim}
-        x = 10; // Definição A
-        y = x + 1; // Definição B
-        x = 20; // Definição C
-        z = x + 2; // Definição D
-    \end{verbatim}
-
-    Aqui, a {Definição A} de {x} alcança a {Definição B}, mas não a {Definição D},
-    pois {x} é redefinido em {Definição C}. Com isso. é possível notar que a análise de
-    \textit{Reaching Definitions} é um componente essencial na otimização de compiladores,
-    fornecendo informações valiosas sobre o uso de variáveis e ajudando a melhorar a
-    eficiência do código gerado.
-
     \subsection*{\emph{Lifetime Analysis}}
 
     A análise de tempo de vida (\textit{lifetime analysis}) em compiladores é um processo crucial que determina o
