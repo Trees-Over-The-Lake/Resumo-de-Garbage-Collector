@@ -1,0 +1,259 @@
+\documentclass{article}
+
+\title{Resumo sobre o Funcionamento dos \emph{Garbage Collectors} de Java e Golang}
+\author{Lucas Santiago \and Rafael Amauri \and Tallys Assis}
+\date{18 de dezembro de 2023}
+
+\usepackage{indentfirst}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+
+\begin{document}
+    \maketitle
+
+    \section*{Introdução}
+
+    Um coletor de lixo, no contexto da programação de computadores, refere-se a um componente essencial nos sistemas que gerenciam a
+    alocação e desalocação de memória. Sua função principal é identificar e recuperar automaticamente os blocos de memória que
+    não estão mais em uso, liberando recursos e prevenindo vazamentos de memória. Essa tarefa é particularmente crucial em
+    linguagens de programação que não oferecem suporte explícito para gerenciamento de memória, como é o caso de linguagens
+    baseadas em Java, Python e Go. Ao automatizar a coleta e remoção de objetos não utilizados, os coletores de lixo contribuem
+    para a eficiência do sistema, melhorando a estabilidade, prevenindo falhas devido à falta de memória e facilitando o desenvolvimento
+    de software ao aliviar os programadores da responsabilidade manual de gerenciamento de memória.
+
+    A grande vantagem de um garbage collector é tirar o peso do gerenciamento de memória das costas do programador,
+    o que pode se mostrar extremamente importante na parte de produtividade, sendo que gerenciamento de memória de forma bem-feita
+    se torna uma tarefa altamente laboriosa quando se trata de programas grandes.
+
+    \subsection*{\emph{Reaching Definition}}
+    Em compiladores, o conceito de \textit{Reaching Definition} faz parte de um conjunto de otimizações da análise de fluxo de dados.
+    Esta análise identifica quais definições de variáveis ``alcançam" um ponto específico no código, isto é,
+    onde as atribuições a uma variável ainda podem influenciar o valor da variável em um ponto posterior no programa.
+
+    Uma definição em programação é um ponto no código onde um valor é atribuído a uma variável.
+    Uma \textit{Reaching Definition} ocorre quando uma definição de uma variável em um ponto do programa
+    ``alcança" outro ponto no programa sem que haja uma redefinição dessa variável no meio do caminho.
+
+    A análise de \textit{Reaching Definitions} é crucial para várias otimizações de compilador e para a
+    análise estática de código. Ela permite ao compilador:
+
+    \begin{itemize}
+        \item Identificar e eliminar código morto.
+        \item Realizar a propagação de constantes.
+        \item Otimizar o gerenciamento de variáveis em memória.
+        \item Melhorar a eficiência na execução de programas.
+    \end{itemize}
+
+    Considere o seguinte trecho de código:
+
+    \begin{verbatim}
+        x = 10; // Definição A
+        y = x + 1; // Definição B
+        x = 20; // Definição C
+        z = x + 2; // Definição D
+    \end{verbatim}
+
+    Aqui, a {Definição A} de {x} alcança a {Definição B}, mas não a {Definição D},
+    pois {x} é redefinido em {Definição C}. Com isso. é possível notar que a análise de
+    \textit{Reaching Definitions} é um componente essencial na otimização de compiladores,
+    fornecendo informações valiosas sobre o uso de variáveis e ajudando a melhorar a
+    eficiência do código gerado.
+
+    \subsection*{\emph{Lifetime Analysis}}
+
+    A análise de tempo de vida (\textit{lifetime analysis}) em compiladores é um processo crucial que determina o
+    período durante o qual as variáveis e objetos em um programa são válidos e podem ser acessados. Esta análise é
+    essencial para a otimização de memória e prevenção de erros comuns relacionados à gestão de recursos.
+
+    Durante a compilação, o compilador realiza uma análise estática do código para identificar o ciclo de vida
+    de cada variável. O \textit{lifetime} de uma variável começa quando é criada (por exemplo, através de uma declaração)
+    e termina quando não é mais acessível no código. Esta análise é fundamental para
+    alocar e desalocar memória de forma eficiente, evitar vazamentos de memória, acessos a memória não
+    inicializada ou liberada e otimizar o uso de registradores e a pilha de execução.
+
+    Existem diferentes métodos para realizar a análise de tempo de vida, dependendo da linguagem de programação e da complexidade do compilador:
+
+    \begin{itemize}
+        \item \textbf{Análise Estática}: Baseia-se no código-fonte sem considerar a execução dinâmica.
+        Utilizada em linguagens como GO.
+
+        \item \textbf{Análise Baseada em Escopo}: Determina o tempo de vida de variáveis com base em
+        seu escopo (por exemplo, variáveis locais).
+
+        \item \textbf{Análise de Fluxo de Dados}: Usa o grafo de fluxo de controle para entender
+        como as variáveis são usadas e modificadas ao longo do programa.
+    \end{itemize}
+
+    A análise de tempo de vida é crucial para a otimização de compiladores, pois permite:
+
+    \begin{itemize}
+        \item Gerenciar eficientemente os recursos de memória.
+
+        \item Implementar técnicas de otimização, como realocação de registradores e eliminação de subexpressões comuns.
+
+        \item Garantir a segurança do programa, prevenindo erros relacionados à memória.
+    \end{itemize}
+
+    A análise de tempo de vida durante a compilação é um aspecto fundamental na engenharia de software,
+    impactando diretamente a eficiência, segurança e confiabilidade dos programas. Ao entender e
+    otimizar o ciclo de vida das variáveis, os compiladores desempenham um papel vital na gestão
+    de recursos e na prevenção de erros comuns de programação.
+
+    \subsection*{\emph{Control Flow Graph} (CFG)}
+
+    O fluxo de grafo de controle (\emph{Control Flow Graph} ou CFG) é uma representação fundamental em linguagens
+    de programação usada principalmente na análise e otimização de compiladores. Ele não é específico para uma
+    linguagem de programação em particular, mas é uma ferramenta universal aplicável a praticamente qualquer linguagem.
+    O CFG é um conceito de nível de compilador, e não algo que os programadores escrevem diretamente no código-fonte.
+
+    No entanto, para esclarecer o contexto, aqui estão alguns exemplos de linguagens de programação onde os
+    compiladores ou ferramentas de análise estática frequentemente empregam CFGs:
+
+    \begin{enumerate}
+        \item \textbf{Java:} Compiladores de Java, como o Java HotSpot, também usam CFG para otimizar bytecode Java antes
+        de ser executado na máquina virtual Java (JVM).
+
+        \item \textbf{Python:} Ferramentas de análise estática para Python, como PyLint ou PyChecker, podem usar CFGs para entender
+        o fluxo de controle do programa e identificar problemas como variáveis não utilizadas ou inacessíveis.
+
+        \item \textbf{Go:} O compilador de Go usa CFGs para otimização e para garantir características como a ausência de
+        \emph{deadlocks}.
+    \end{enumerate}
+
+    Em resumo, o fluxo de grafo de controle é uma abordagem usada em compiladores e ferramentas de análise de código
+    para diversas linguagens de programação, ajudando na otimização e na garantia da corretude do código.
+
+    \section*{\emph{Garbage Collector} da JVM}
+
+    A \emph{Young Generation}, ou geração jovem, é uma parte essencial do sistema de gerenciamento de memória do Java.
+    Compreendendo as áreas de \emph{Eden Space} e duas \emph{Survivor Spaces} (S0 e S1), a \emph{Young Generation} é o local onde os objetos
+    recém-criados são alocados. Durante a execução do programa, o coletor de lixo atua de forma eficiente na \emph{Young Generation},
+    implementando o algoritmo \emph{Garbage Collection} para identificar e remover objetos não referenciados. Este processo é
+    fundamental para garantir uma utilização eficaz da memória e promover a rápida liberação de recursos de objetos temporários.
+    Os objetos que sobrevivem a várias coletas na \emph{Young Generation} são promovidos para a \emph{Old Generation}, onde sua vida útil é
+    estendida, contribuindo para um gerenciamento eficiente dos recursos de memória no ambiente Java.
+
+    A \emph{Old Generation}, ou geração mais antiga, é uma parte crucial do gerenciamento de memória em Java. Nessa área,
+    objetos com vida útil mais longa, que sobreviveram a várias coletas na \emph{Young Generation}, são alocados.
+    Diferentemente da \emph{Young Generation}, a \emph{Old Generation} é mais resistente a mudanças frequentes e destina-se a
+    objetos que persistem por mais tempo durante a execução do programa. O coletor de lixo atua na \emph{Old Generation}
+    para identificar e remover objetos não referenciados, evitando vazamentos de memória e garantindo a eficiência
+    no uso dos recursos do sistema. O equilíbrio entre a \emph{Young} e \emph{Old Generation} é fundamental para o desempenho e a
+    estabilidade de aplicativos Java de longa duração.
+
+    O \emph{Metaspace} é uma área especializada de armazenamento de metadados em Java, destinada a substituir o
+    antigo espaço de permanente (\emph{PermGen}). Ao contrário das gerações de memória, o \emph{Metaspace} não está limitado por
+    um tamanho fixo, pois pode crescer dinamicamente conforme necessário. Ele gerencia informações sobre classes,
+    métodos e estruturas de dados relacionadas à execução do programa. A utilização do Metaspace é essencial para
+    evitar problemas de falta de espaço para o armazenamento de metadados, oferecendo flexibilidade e adaptabilidade
+    ao ambiente de execução Java.
+
+    O congelamento temporário do programa durante a execução do coletor de lixo (GC) é uma característica inerente
+    ao processo de gerenciamento de memória em Java. Durante esse período, conhecido como ``pausa de GC", a
+    execução do programa é interrompida para permitir que o coletor de lixo identifique e remova objetos não
+    referenciados, liberando assim recursos de memória. Embora essa pausa seja necessária para garantir a integridade
+    e eficiência do gerenciamento de memória, é importante otimizar a configuração do GC e ajustar estratégias de
+    coleta para minimizar o impacto no desempenho global do programa.
+
+    \section*{\emph{Gargage Collector} da linguagem GO}
+
+    O algoritmo \textit{Tri-color Mark and Sweep} é um método de coleta de lixo utilizado em várias linguagens de programação,
+    incluindo Go. Este algoritmo é conhecido por sua eficiência e pela capacidade de minimizar as pausas no programa durante a coleta de lixo.
+
+    O algoritmo divide os objetos em três ``cores": branco, cinza e preto. Cada cor representa um estado diferente
+    no ciclo de vida da coleta de lixo.
+
+    \subsection*{Fase de Marcação (\emph{Mark})}
+
+    \begin{enumerate}
+        \item \textbf{Inicialização:} Todos os objetos são marcados como brancos.
+        \item \textbf{Raízes:} As raízes (objetos diretamente acessíveis, como variáveis globais e pilha de chamadas) são marcadas como cinzas.
+        \item \textbf{Processamento dos Cinzas:} Cada objeto cinza tem seus filhos (referências) marcados como cinzas
+        e ele mesmo é marcado como preto. Este processo continua até que não haja mais objetos cinzas.
+    \end{enumerate}
+
+    \subsubsection*{Fase de Varredura (\emph{Sweep})}
+    \begin{enumerate}
+        \item \textbf{Identificação de Objetos Brancos}: Após a marcação, os objetos que permanecem brancos
+        são aqueles que não são acessíveis pelo programa.
+        \item \textbf{Liberação de Memória}: Estes objetos brancos são então coletados, liberando a memória que ocupavam.
+    \end{enumerate}
+
+    As vantagens desse algoritmo são a minimização de pausas. O algoritmo permite a coleta de lixo incremental, reduzindo as pausas no programa.
+    Além da eficiência, apenas os objetos inacessíveis são coletados, otimizando o uso de memória.
+
+    O algoritmo \textit{Tri-color Mark and Sweep} é uma abordagem eficiente para a coleta de lixo em Go,
+    equilibrando a necessidade de gerenciamento de memória com a minimização de interrupções no programa.
+
+    \section*{Relação entre CFGs e \emph{Garbage Collectors}}
+
+    \subsubsection*{Grafo de Fluxo de Controle (CFG)}
+
+    \begin{itemize}
+        \item \textbf{Propósito:} O CFG é uma representação abstrata usada para analisar o fluxo de execução de um programa.
+        Ele mostra os caminhos possíveis que o controle pode seguir durante a execução do programa.
+
+        \item \textbf{Uso em Compiladores:} Os CFGs são utilizados em compiladores para otimizações e análises estáticas,
+        como a eliminação de código morto, análise de dependência de dados, e outras otimizações de tempo de compilação.
+
+        \item \textbf{Natureza:} É uma representação estática do código, mostrando estruturas como loops, condições e saltos.
+    \end{itemize}
+
+    \subsubsection*{Coletor de Lixo da linguagem GO}
+
+    \begin{itemize}
+        \item \textbf{Propósito:} Este é um algoritmo de coleta de lixo usado para gerenciar a memória dinâmica.
+        Ele identifica quais objetos na memória heap não são mais acessíveis pelo programa e,
+        portanto, podem ser coletados (liberados).
+        \item \textbf{Fases do Algoritmo:}
+            \subitem \textbf{Marcação (\emph{Mark}):} Os objetos são marcados como ``acessíveis" ou ``não acessíveis"
+            com base em se eles são referenciados pelo programa.
+            \subitem \textbf{Varredura (\emph{Sweep}):} Os objetos não acessíveis são identificados e a memória que ocupam é liberada.
+        \item \textbf{Natureza:}  É um processo dinâmico que acontece em tempo de execução e está mais
+        relacionado à gestão de recursos de memória do que ao fluxo de controle do programa.
+
+    \end{itemize}
+
+    \subsubsection*{Diferenças Fundamentais}
+
+    \begin{itemize}
+        \item \textbf{Objetivo:} CFG é sobre o fluxo de controle (lógica de execução do programa), enquanto o
+        Tri-color Mark and Sweep é sobre gerenciamento de memória (coleta de lixo).
+
+        \item \textbf{Aplicação:} CFG é uma ferramenta de análise de código usada em tempo de compilação,
+        enquanto o algoritmo de coleta de lixo é um processo de runtime que lida com a alocação e desalocação de memória.
+
+        \item \textbf{Representação:} CFG é uma representação gráfica do código, enquanto o Tri-color Mark
+        and Sweep não possui uma representação gráfica associada ao fluxo de controle do código.
+
+    \end{itemize}
+
+    \section*{Conclusão}
+
+    Este resumo examinou o impacto e a eficácia dos coletores de lixo (\emph{garbage collectors}) na programação.
+    Observamos que, embora coletores de lixo possam significativamente melhorar a produtividade do programador
+    ao automatizar o gerenciamento de memória, eles também introduzem um \emph{overhead} que, em alguns casos, pode
+    comprometer o desempenho em comparação com a otimização manual feita por programadores experientes.
+
+    Por um lado, os coletores de lixo liberam os programadores da complexa e propensa a erros tarefa de
+    gerenciar manualmente a memória, permitindo-lhes focar na lógica do aplicativo e na resolução de problemas
+    mais diretamente relacionados aos objetivos do projeto. Essa automação pode levar a um desenvolvimento mais
+    rápido e menos propenso a bugs relacionados à memória, como vazamentos ou corrupção de dados.
+
+    Por outro lado, o \emph{overhead} introduzido pelos coletores de lixo, particularmente em termos de desempenho e uso
+    de memória, pode ser uma desvantagem em certos cenários, especialmente onde a eficiência de recursos é crítica.
+    Programas otimizados manualmente por desenvolvedores competentes podem superar os gerenciados automaticamente em
+    termos de desempenho bruto e eficiência de memória.
+
+    No entanto, em projetos de grande escala, o custo de execução dos coletores de lixo se torna proporcionalmente
+    menos significativo. À medida que a complexidade do projeto aumenta, a sobrecarga administrativa de gerenciar
+    manualmente a memória pode se tornar impraticável, fazendo com que os benefícios de um coletor de lixo superem
+    seus custos. Em tais cenários, o uso de um coletor de lixo pode ser a escolha mais sensata, fornecendo uma solução
+    escalável e menos propensa a erros para o gerenciamento de memória.
+
+    Em conclusão, enquanto os coletores de lixo podem introduzir alguma sobrecarga, seu impacto tende a diminuir
+    em projetos maiores, onde as vantagens de produtividade e segurança proporcionadas por eles se tornam mais evidentes.
+    A escolha entre coleta de lixo automática e gerenciamento de memória manual deve ser feita considerando o contexto
+    específico e os requisitos de desempenho de cada projeto.
+
+\end{document}
